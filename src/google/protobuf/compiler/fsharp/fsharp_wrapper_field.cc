@@ -50,85 +50,92 @@ namespace fsharp {
 WrapperFieldGenerator::WrapperFieldGenerator(const FieldDescriptor* descriptor,
   int fieldOrdinal, const Options *options)
   : FieldGeneratorBase(descriptor, fieldOrdinal, options) {
-  variables_["has_property_check"] = name() + "_ != null";
-  variables_["has_not_property_check"] = name() + "_ == null";
+  variables_["has_property_check"] = name() + "_.HasValue";
+  variables_["has_not_property_check"] = "(not this." + name() + "_.HasValue)";
   const FieldDescriptor* wrapped_field = descriptor->message_type()->field(0);
   is_value_type = wrapped_field->type() != FieldDescriptor::TYPE_STRING &&
     wrapped_field->type() != FieldDescriptor::TYPE_BYTES;
   if (is_value_type) {
     variables_["nonnullable_type_name"] = TypeName(wrapped_field);
   }
+  variables_["full_codec"] = descriptor->containing_type()->name() + "._single_" + variables_["name"] + "_codec";
 }
 
 WrapperFieldGenerator::~WrapperFieldGenerator() {
 }
 
+void WrapperFieldGenerator::GenerateValDeclaration(io::Printer* printer) {
+  printer->Print(
+    variables_,
+    "val mutable private $name$_ : System.Nullable<$type_name$>\n"
+  );
+}
+
+void WrapperFieldGenerator::GenerateConstructorValue(io::Printer* printer) {
+  printer->Print(
+    variables_,
+    "$name$_ = new System.Nullable<$type_name$>()\n"
+  );
+}
+
 void WrapperFieldGenerator::GenerateMembers(io::Printer* printer) {
   printer->Print(
     variables_,
-    "private static readonly pb::FieldCodec<$type_name$> _single_$name$_codec = ");
+    "static member private _single_$name$_codec = ");
   GenerateCodecCode(printer);
-  printer->Print(
-    variables_,
-    ";\n"
-    "private $type_name$ $name$_;\n");
+  printer->Print("\n");
+
   WritePropertyDocComment(printer, descriptor_);
   AddPublicMemberAttributes(printer);
   printer->Print(
     variables_,
-    "$access_level$ $type_name$ $property_name$ {\n"
-    "  get { return $name$_; }\n"
-    "  set {\n"
-    "    $name$_ = value;\n"
-    "  }\n"
-    "}\n");
+    "member $access_level$ this.$property_name$\n"
+    "  with get() = this.$name$_\n"
+    "  and set(value: System.Nullable<$type_name$>) =\n"
+    "    this.$name$_ <- value\n"
+  );
 }
 
 void WrapperFieldGenerator::GenerateMergingCode(io::Printer* printer) {
   printer->Print(
     variables_,
-    "if (other.$has_property_check$) {\n"
-    "  if ($has_not_property_check$ || other.$property_name$ != $default_value$) {\n"
-    "    $property_name$ = other.$property_name$;\n"
-    "  }\n"
-    "}\n");
+    "if other.$has_property_check$ then\n"
+    "  if $has_not_property_check$ || other.$property_name$.Value <> $default_value$ then\n"
+    "    this.$property_name$ <- other.$property_name$\n");
 }
 
 void WrapperFieldGenerator::GenerateParsingCode(io::Printer* printer) {
   printer->Print(
     variables_,
-    "$type_name$ value = _single_$name$_codec.Read(input);\n"
-    "if ($has_not_property_check$ || value != $default_value$) {\n"
-    "  $property_name$ = value;\n"
-    "}\n");
+    "let value = $full_codec$.Read(input)\n"
+    "if $has_not_property_check$ || (value.HasValue && value.Value <> $default_value$) then\n"
+    "  this.$property_name$ <- value\n");
 }
 
 void WrapperFieldGenerator::GenerateSerializationCode(io::Printer* printer) {
   printer->Print(
     variables_,
-    "if ($has_property_check$) {\n"
-    "  _single_$name$_codec.WriteTagAndValue(output, $property_name$);\n"
-    "}\n");
+    "if this.$has_property_check$ then\n"
+    "  $full_codec$.WriteTagAndValue(output, this.$property_name$)\n");
 }
 
 void WrapperFieldGenerator::GenerateSerializedSizeCode(io::Printer* printer) {
   printer->Print(
     variables_,
-    "if ($has_property_check$) {\n"
-    "  size += _single_$name$_codec.CalculateSizeWithTag($property_name$);\n"
-    "}\n");
+    "if this.$has_property_check$ then\n"
+    "  size <- size + $full_codec$.CalculateSizeWithTag(this.$property_name$)\n");
 }
 
 void WrapperFieldGenerator::WriteHash(io::Printer* printer) {
   printer->Print(
     variables_,
-    "if ($has_property_check$) hash ^= $property_name$.GetHashCode();\n");
+    "if this.$has_property_check$ then hash <- hash ^^^ this.$property_name$.GetHashCode()\n");
 }
 
 void WrapperFieldGenerator::WriteEquals(io::Printer* printer) {
   printer->Print(
     variables_,
-    "if ($property_name$ != other.$property_name$) return false;\n");
+    "else if this.$property_name$ <> other.$property_name$ then false\n");
 }
 
 void WrapperFieldGenerator::WriteToString(io::Printer* printer) {
@@ -137,18 +144,18 @@ void WrapperFieldGenerator::WriteToString(io::Printer* printer) {
 
 void WrapperFieldGenerator::GenerateCloningCode(io::Printer* printer) {
   printer->Print(variables_,
-    "$property_name$ = other.$property_name$;\n");
+    "$name$_ = other.$name$_\n");
 }
 
 void WrapperFieldGenerator::GenerateCodecCode(io::Printer* printer) {
   if (is_value_type) {
     printer->Print(
       variables_,
-      "pb::FieldCodec.ForStructWrapper<$nonnullable_type_name$>($tag$)");
+      "FieldCodec.ForStructWrapper<$nonnullable_type_name$>($tag$u)");
   } else {
     printer->Print(
       variables_,
-      "pb::FieldCodec.ForClassWrapper<$type_name$>($tag$)");
+      "FieldCodec.ForClassWrapper<$type_name$>($tag$u)");
   }
 }
 

@@ -52,6 +52,8 @@ public:
 
   virtual void GenerateCodecCode(io::Printer* printer);
   virtual void GenerateCloningCode(io::Printer* printer);
+  virtual void GenerateValDeclaration(io::Printer* printer);
+  virtual void GenerateConstructorValue(io::Printer* printer);
   virtual void GenerateMembers(io::Printer* printer);
   virtual void GenerateMergingCode(io::Printer* printer);
   virtual void GenerateParsingCode(io::Printer* printer);

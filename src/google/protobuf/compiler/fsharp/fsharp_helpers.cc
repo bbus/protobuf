@@ -352,15 +352,7 @@ std::string GetTypeName(const FieldDescriptor* descriptor) {
     if (IsWrapperType(descriptor)) {
       const FieldDescriptor* wrapped_field =
         descriptor->message_type()->field(0);
-      string wrapped_field_type_name = GetTypeName(wrapped_field);
-      // String and ByteString go to the same type; other wrapped types
-      // go to the nullable equivalent.
-      if (wrapped_field->type() == FieldDescriptor::TYPE_STRING ||
-        wrapped_field->type() == FieldDescriptor::TYPE_BYTES) {
-        return wrapped_field_type_name;
-      } else {
-        return wrapped_field_type_name + "?";
-      }
+      return GetTypeName(wrapped_field);
     }
     return type_namespace + GetTypeName(descriptor->message_type());
   case FieldDescriptor::TYPE_DOUBLE:
