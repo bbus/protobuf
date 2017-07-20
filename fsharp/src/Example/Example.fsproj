@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="UnittestImportPublicProto3.fs" />
+    <Compile Include="UnittestImportProto3.fs" />
+    <Compile Include="UnittestProto3.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\csharp\src\Google.Protobuf\Google.Protobuf.csproj" />
+  </ItemGroup>
+
+</Project>
